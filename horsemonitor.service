@@ -1,0 +1,16 @@
+[Unit]
+Description=GPS Data Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment="PATH=/home/pi/horsemonitor/gpsd-env/bin:/usr/bin:/bin"
+ExecStart=/home/pi/horsemonitor/gpsd-env/bin/python /home/pi/horsemonitor/mainUDP.py
+WorkingDirectory=/home/pi/horsemonitor
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
