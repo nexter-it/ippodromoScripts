@@ -32,7 +32,7 @@ sudo systemctl status horsemonitor.service
 # Abilito VPN
 echo "Enabling VPN..."
 sudo cp vpn.conf /etc/wireguard/
-sudo wg-quick up vpn
+# sudo wg-quick up vpn
 sudo systemctl enable wg-quick@vpn
 sudo systemctl start wg-quick@vpn
 sudo systemctl status wg-quick@vpn
