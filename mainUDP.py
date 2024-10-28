@@ -4,12 +4,14 @@ import time
 import socket
 import math
 
+import psutil
+
 # Indirizzo IP e porta del server a cui inviare i dati
 #HOST, PORT = '95.230.211.208', 4141
 HOST, PORT = '95.230.211.208', 4141
 
 # ID HEAD
-HEAD_ID = 1
+HEAD_ID = 4
 
 def create_socket():
     """ Crea il socket UDP. """
@@ -64,7 +66,10 @@ try:
 
                     
                 packet_count += 1
-                
+                # Legge il consumo di CPU e di RAM
+                cpu_usage = psutil.cpu_percent()
+                ram_usage = psutil.virtual_memory().percent
+
                 data = [
                     "GPS",
                     str(HEAD_ID),
@@ -73,7 +78,9 @@ try:
                     str(packet.get_time()),  # Orario
                     str(packet.alt) if packet.alt is not None else 'N/A',  # Altitudine
                     str(packet.hspeed),  # Velocità orizzontale
-                    str(int(average_bearing))
+                    str(int(average_bearing)),
+                    str(cpu_usage),  # Uso della CPU in percentuale
+                    str(ram_usage)   # Uso della RAM in percentuale
                 ]
 
                 # Unisce gli elementi dell'array in una stringa separata da virgole
