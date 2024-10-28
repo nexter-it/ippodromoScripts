@@ -14,10 +14,6 @@ pip3 install gpsd-py3 --break-system-packages
 pip3 install psutil --break-system-packages
 pip3 install smbus --break-system-packages
 
-# Verifica l'installazione di gpsd con cgps
-echo "Testing GPSD setup..."
-cgps -s
-
 # Installa tmux per eventuali sessioni persistenti
 echo "Installing tmux..."
 sudo apt install -y tmux
