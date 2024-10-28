@@ -6,7 +6,7 @@ sudo apt update
 
 # Installa le dipendenze principali
 echo "Installing required packages..."
-sudo apt install -y git gpsd gpsd-clients python3-gps python3-pip wireguard resolvconf dnsmasq hostapd
+sudo apt install -y git gpsd gpsd-clients python3-gps python3-pip wireguard resolvconf dnsmasq hostapd i2c-tools
 
 # Installa i pacchetti Python necessari
 echo "Installing Python packages..."
