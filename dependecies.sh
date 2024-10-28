@@ -30,7 +30,7 @@ echo "Checking horsemonitor service status..."
 sudo systemctl status horsemonitor.service
 
 # Abilito VPN
-echo "Abilito VPN..."
+echo "Enabling VPN..."
 sudo cp vpn.conf /etc/wireguard/
 sudo wg-quick up vpn
 sudo systemctl enable wg-quick@vpn
@@ -38,3 +38,7 @@ sudo systemctl start wg-quick@vpn
 sudo systemctl status wg-quick@vpn
 
 echo "All dependencies and service have been set up successfully!"
+echo "Rebooting in 10 seconds..."
+
+sleep 10
+sudo reboot
