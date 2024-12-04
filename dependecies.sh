@@ -6,13 +6,18 @@ sudo apt update
 
 # Installa le dipendenze principali
 echo "Installing required packages..."
-sudo apt install -y git gpsd gpsd-clients python3-gps python3-pip wireguard resolvconf dnsmasq hostapd i2c-tools
+sudo apt install -y git gpsd gpsd-clients python3-gps python3-pip wireguard resolvconf dnsmasq hostapd i2c-tools libportaudio2
+
+# Setta volume mic e output
+amixer set Capture 90%
+amixer set Master 90%
 
 # Installa i pacchetti Python necessari
 echo "Installing Python packages..."
 pip3 install gpsd-py3 --break-system-packages
 pip3 install psutil --break-system-packages
 pip3 install smbus --break-system-packages
+pip3 install sounddevice --break-system-packages
 
 # Installa tmux per eventuali sessioni persistenti
 echo "Installing tmux..."
