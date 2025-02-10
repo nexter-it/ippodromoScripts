@@ -3,16 +3,26 @@ import gpsd
 import time
 import socket
 import math
-
+import json
 import psutil
 
 # Indirizzo IP e porta del server a cui inviare i dati
 #HOST, PORT = '95.230.211.208', 4141
 HOST, PORT = '95.230.211.208', 4141
 
-# ID HEAD
-HEAD_ID = 4
+# ID HEAD DEFAULT
+HEAD_ID = 999
 
+try:
+    with open('/home/pi/config.json', 'r') as config_file:
+        config = json.load(config_file)
+    HEAD_ID = config.get("HEAD_ID", 6)
+except Exception as e:
+    print(f"Errore nella lettura del file di configurazione: {e}")
+    HEAD_ID = 999
+    
+print("HEAD_ID settata:" + str(HEAD_ID))
+    
 def create_socket():
     """ Crea il socket UDP. """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -93,7 +103,17 @@ try:
                     print("[ " + str(packet_count) + " ]" + " - " + data_str)
                     print("Errore di invio dati.")
 
-            time.sleep(0.04)  # Attende 0.04 secondi prima del prossimo invio
+            try:
+                speed = float(packet.hspeed)
+            except (TypeError, ValueError):
+                speed = 0
+            
+            speed = speed * 3.6
+
+            if speed <= 2:
+                time.sleep(1)      # 1 pacchetto al secondo
+            else:
+                time.sleep(0.04)   # 25 pacchetti al secondo
         except Exception as e:
             if "GPS not active" in str(e):
                 print("Errore GPS: GPS non attivo, attesa di 10 secondi.")
