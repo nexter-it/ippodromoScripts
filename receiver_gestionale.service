@@ -1,0 +1,14 @@
+[Unit]
+Description=UDP Listener per aggiornamento HEAD_ID
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/ippodromoScripts/receiver_ippodromo.py
+WorkingDirectory=/home/pi/ippodromoScripts
+StandardOutput=journal
+StandardError=journal
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
