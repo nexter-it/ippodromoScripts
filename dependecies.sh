@@ -30,9 +30,20 @@ sudo systemctl daemon-reload
 sudo systemctl enable horsemonitor.service
 sudo systemctl start horsemonitor.service
 
-# Mostra lo stato del servizio per confermare che sia attivo
+# Mostra lo stato del servizio horsemonitor
 echo "Checking horsemonitor service status..."
 sudo systemctl status horsemonitor.service
+
+# Configura il servizio systemd per receiver_gestionale
+echo "Setting up receiver_gestionale service..."
+sudo cp receiver_gestionale.service /etc/systemd/system/receiver_gestionale.service
+sudo systemctl daemon-reload
+sudo systemctl enable receiver_gestionale.service
+sudo systemctl start receiver_gestionale.service
+
+# Mostra lo stato del servizio receiver_gestionale
+echo "Checking receiver_gestionale service status..."
+sudo systemctl status receiver_gestionale.service
 
 echo "Enabling ssh..."
 sudo systemctl enable ssh
@@ -41,12 +52,12 @@ sudo systemctl start ssh
 # Abilito VPN
 #echo "Enabling VPN..."
 #sudo cp vpn.conf /etc/wireguard/
-# sudo wg-quick up vpn
+#sudo wg-quick up vpn
 #sudo systemctl enable wg-quick@vpn
 #sudo systemctl start wg-quick@vpn
 #sudo systemctl status wg-quick@vpn
 
-echo "All dependencies and service have been set up successfully!"
+echo "All dependencies and services have been set up successfully!"
 echo "Rebooting in 10 seconds..."
 
 sleep 10
