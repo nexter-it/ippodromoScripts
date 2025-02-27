@@ -6,7 +6,7 @@ import subprocess
 # Impostazioni
 UDP_IP = "0.0.0.0"
 UDP_PORT = 5959
-CONFIG_FILE = "/home/pi/config.json"
+CONFIG_FILE = "/home/pi/ippodromoScripts/config.json"
 SERVICE_TO_RESTART = "horsemonitor.service"
 
 def update_config(horse_number):
