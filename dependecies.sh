@@ -8,7 +8,7 @@ sudo apt update
 echo "Installing required packages..."
 sudo apt install -y git gpsd gpsd-clients python3-gps python3-pip wireguard resolvconf dnsmasq hostapd i2c-tools libportaudio2
 
-# Setta volume mic e output
+# Setta volume microfono e output
 amixer set Capture 90%
 amixer set Master 90%
 
@@ -49,13 +49,17 @@ echo "Enabling ssh..."
 sudo systemctl enable ssh
 sudo systemctl start ssh
 
-# Abilito VPN
-echo "Enabling VPN..."
-sudo cp vpn.conf /etc/wireguard/
-sudo wg-quick up vpn
-sudo systemctl enable wg-quick@vpn
-sudo systemctl start wg-quick@vpn
-sudo systemctl status wg-quick@vpn
+# Abilito VPN solo se vpn.conf esiste nella directory corrente
+if [ -f "vpn.conf" ]; then
+    echo "Enabling VPN..."
+    sudo cp vpn.conf /etc/wireguard/
+    sudo wg-quick up vpn
+    sudo systemctl enable wg-quick@vpn
+    sudo systemctl start wg-quick@vpn
+    sudo systemctl status wg-quick@vpn
+else
+    echo "vpn.conf non trovato. Salto la configurazione della VPN."
+fi
 
 echo "All dependencies and services have been set up successfully!"
 echo "Rebooting in 10 seconds..."
