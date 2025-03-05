@@ -18,6 +18,7 @@ pip3 install gpsd-py3 --break-system-packages
 pip3 install psutil --break-system-packages
 pip3 install smbus --break-system-packages
 pip3 install sounddevice --break-system-packages
+pip3 install filterpy --break-system-packages
 
 # Installa tmux per eventuali sessioni persistenti
 echo "Installing tmux..."
