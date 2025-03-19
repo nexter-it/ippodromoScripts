@@ -24,7 +24,7 @@ GPS_BAUDRATE = 115200
 DEST_HOST = '10.0.0.3'
 DEST_PORT = 3131
 
-# Variabili globali per la condivisione dei dati
+# Variabili globali
 rtcm_data = b''
 rtcm_lock = threading.Lock()
 gps_position = None
@@ -32,10 +32,13 @@ gps_lock = threading.Lock()
 last_rtcm_time = 0
 RTCM_MIN_INTERVAL = 1.0  # Intervallo di 1 secondo tra le correzioni RTCM
 
-# Variabili per il calcolo degli hertz
-gps_update_times = deque(maxlen=100)  # Memorizza i timestamp degli ultimi 100 aggiornamenti
+# Per il calcolo degli hertz
+gps_update_times = deque(maxlen=100)
 hertz_lock = threading.Lock()
 current_hertz = 0
+
+# ----> Socket UDP globale
+udp_socket = None
 
 def connect_to_ntrip():
     """Connessione al caster NTRIP e ricezione delle correzioni RTCM"""
@@ -75,11 +78,27 @@ def connect_to_ntrip():
     except Exception as e:
         print(f"Errore nella connessione NTRIP: {e}")
 
+def init_udp_socket():
+    """Inizializza il socket UDP una sola volta."""
+    global udp_socket
+    if udp_socket is None:
+        try:
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Se vuoi forzare una porta locale specifica, puoi fare:
+            # udp_socket.bind(('0.0.0.0', 50000))
+            print("Socket UDP inizializzato correttamente.")
+        except Exception as e:
+            print(f"Errore nell'inizializzazione del socket UDP: {e}")
+
 def send_gps_data(gps_data):
-    """Invia i dati GPS al server di destinazione tramite UDP"""
+    """Invia i dati GPS al server di destinazione tramite UDP usando il socket globale."""
+    global udp_socket
+    if udp_socket is None:
+        print("Socket UDP non inizializzato!")
+        return
+    
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.sendto(gps_data.encode(), (DEST_HOST, DEST_PORT))
+        udp_socket.sendto(gps_data.encode(), (DEST_HOST, DEST_PORT))
     except Exception as e:
         print(f"Errore nell'invio dei dati GPS: {e}")
 
@@ -185,6 +204,10 @@ def main():
     print(f"Utilizzando porta GPS: {GPS_PORT}")
     print(f"Inviando dati a: {DEST_HOST}:{DEST_PORT}")
     
+    # Inizializza il socket UDP una sola volta
+    init_udp_socket()
+    
+    # Avvia i thread
     ntrip_thread = threading.Thread(target=connect_to_ntrip)
     gps_thread = threading.Thread(target=connect_to_gps)
     hertz_thread = threading.Thread(target=update_hertz)
@@ -205,7 +228,8 @@ def main():
             # Stampa informazioni sulla posizione e sulla frequenza
             with gps_lock:
                 if gps_position:
-                    print(f"Posizione: Lat: {gps_position['lat']}, Lon: {gps_position['lon']}, Qualità: {gps_position['quality']}, Hz: {current_hertz}")
+                    print(f"Posizione: Lat: {gps_position['lat']}, Lon: {gps_position['lon']}, "
+                          f"Qualità: {gps_position['quality']}, Hz: {current_hertz}")
     except KeyboardInterrupt:
         print("\nProgramma terminato dall'utente")
 
