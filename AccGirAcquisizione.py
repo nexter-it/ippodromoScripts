@@ -14,7 +14,7 @@ from mpu6050 import mpu6050
 sensor = mpu6050(0x68)
 
 # File di log (CSV)
-log_file = "sensor_log.csv"
+log_file = "/home/pi/ippodromoScripts/sensor_log.csv"
 
 # Se il file non esiste, crea il file e scrivi l'intestazione
 if not os.path.exists(log_file):
