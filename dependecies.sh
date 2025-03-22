@@ -64,6 +64,7 @@ fi
 
 # Avvio servizio per acquisizione accellerometri e giroscopi
 echo "Setting up accgir service..."
+sudo pip3 install mpu6050-raspberrypi --break-system-packages
 sudo mkdir logAccGir
 sudo cp accgir.service /etc/systemd/system/accgir.service
 sudo systemctl daemon-reload
