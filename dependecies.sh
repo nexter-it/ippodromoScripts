@@ -62,8 +62,13 @@ else
     echo "vpn.conf non trovato. Salto la configurazione della VPN."
 fi
 
-# Creo directory per log
+# Avvio servizio per acquisizione accellerometri e giroscopi
+echo "Setting up accgir service..."
 sudo mkdir logAccGir
+sudo cp accgir.service /etc/systemd/system/accgir.service
+sudo systemctl daemon-reload
+sudo systemctl enable accgir.service
+sudo systemctl start accgir.service
 
 echo "All dependencies and services have been set up successfully!"
 echo "Rebooting in 10 seconds..."
