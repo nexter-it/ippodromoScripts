@@ -16,7 +16,7 @@ from mpu6050 import mpu6050
 sensor = mpu6050(0x68)
 
 # Directory in cui salvare i file di log
-log_dir = "/home/pi/ippodromoScripts"
+log_dir = "/home/pi/ippodromoScripts/logAccGir"
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
