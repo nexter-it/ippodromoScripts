@@ -3,7 +3,7 @@ Description=Avvio automatico acquisizione dati giroscopio/accelerometro
 After=network.target
 
 [Service]
-User=pi
+User=root
 WorkingDirectory=/home/pi/ippodromoScripts
 ExecStart=/usr/bin/python3 /home/pi/ippodromoScripts/AccGirAcquisizione.py
 Restart=always
