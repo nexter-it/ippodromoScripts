@@ -62,6 +62,9 @@ else
     echo "vpn.conf non trovato. Salto la configurazione della VPN."
 fi
 
+# Creo directory per log
+sudo mkdir logAccGir
+
 echo "All dependencies and services have been set up successfully!"
 echo "Rebooting in 10 seconds..."
 
