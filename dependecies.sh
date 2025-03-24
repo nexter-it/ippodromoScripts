@@ -86,6 +86,7 @@ fi
 
 sudo timedatectl set-timezone Europe/Rome
 sudo mkdir logAccGir
+sudo mkdir logRTK
 sudo cp accgir.service /etc/systemd/system/accgir.service
 sudo systemctl daemon-reload
 sudo systemctl enable accgir.service
