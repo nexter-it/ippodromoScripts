@@ -165,7 +165,7 @@ def connect_to_gps():
 
                         # Salva la riga nel buffer (per scrittura su file in background)
                         with messages_lock:
-                            messages_buffer.append(f"[GPS] {line}")
+                            messages_buffer.append(f"[RTK] {line}")
                         
                         # Parsing NMEA
                         try:
