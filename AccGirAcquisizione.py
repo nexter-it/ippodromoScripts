@@ -32,7 +32,8 @@ def flush_data(accumulated_data, filename):
     with open(filename, "a", newline="") as csvfile:
         writer = csv.writer(csvfile)
         if write_header:
-            writer.writerow(["timestamp", "accel_x", "accel_y", "accel_z", "gyro_x", "gyro_y", "gyro_z"])
+            # Aggiunta della colonna "timestamp_ms" per il timestamp formattato al millisecondo
+            writer.writerow(["timestamp", "timestamp_ms", "accel_x", "accel_y", "accel_z", "gyro_x", "gyro_y", "gyro_z"])
         writer.writerows(accumulated_data)
 
 # Parametri: frequenza di lettura e intervallo di salvataggio
@@ -48,14 +49,19 @@ print("Inizio acquisizione dati. Premi CTRL+C per terminare.")
 
 try:
     while True:
+        # Ottieni il timestamp come float (secondi dall'epoca)
         current_time = time.time()
+        # Ottieni anche un timestamp formattato con millisecondi
+        timestamp_ms = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        
         # Leggi i dati accelerometro e giroscopio
         accel = sensor.get_accel_data()
         gyro = sensor.get_gyro_data()
 
-        # Prepara il record: timestamp e dati letti
+        # Prepara il record: timestamp float, timestamp formattato, e dati letti
         record = [
             current_time,
+            timestamp_ms,
             accel["x"], accel["y"], accel["z"],
             gyro["x"], gyro["y"], gyro["z"]
         ]
