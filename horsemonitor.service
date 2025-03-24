@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/pi/ippodromoScripts/mainUDP.py
+ExecStart=/usr/bin/python3 /home/pi/ippodromoScripts/mainRTK.py
 WorkingDirectory=/home/pi/ippodromoScripts
 StandardOutput=inherit
 StandardError=inherit
