@@ -24,6 +24,10 @@ GPS_BAUDRATE = 115200
 DEST_HOST = '10.0.0.3'
 DEST_PORT = 3131
 
+# Secondo endpoint UDP a cui inviare i pacchetti
+SECOND_DEST_HOST = '213.209.192.165'
+SECOND_DEST_PORT = 5003
+
 # Variabili globali
 rtcm_data = b''
 rtcm_lock = threading.Lock()
@@ -37,13 +41,18 @@ gps_update_times = deque(maxlen=100)
 hertz_lock = threading.Lock()
 current_hertz = 0
 
-# ----> Socket UDP globale
+# Socket UDP globale
 udp_socket = None
+
+# ----> Buffer e lock per salvataggio periodico dei messaggi
+messages_buffer = []
+messages_lock = threading.Lock()
+SAVE_INTERVAL = 15  # secondi tra un salvataggio e l'altro
+
 
 def connect_to_ntrip():
     """Connessione al caster NTRIP e ricezione delle correzioni RTCM"""
     global rtcm_data
-    
     credentials = f"{USERNAME}:{PASSWORD}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
@@ -71,12 +80,20 @@ def connect_to_ntrip():
                 data = s.recv(1024)
                 if not data:
                     break
-                
+
+                # Aggiorna i dati RTCM
                 with rtcm_lock:
                     rtcm_data = data
+
+                # Salva il messaggio in un buffer (in background lo scriveremo su file)
+                # Convertiamo i dati binari in esadecimale per evitare caratteri non stampabili
+                hex_data = binascii.hexlify(data).decode()
+                with messages_lock:
+                    messages_buffer.append(f"[NTRIP] {hex_data}")
                 
     except Exception as e:
         print(f"Errore nella connessione NTRIP: {e}")
+
 
 def init_udp_socket():
     """Inizializza il socket UDP una sola volta."""
@@ -84,14 +101,16 @@ def init_udp_socket():
     if udp_socket is None:
         try:
             udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # Se vuoi forzare una porta locale specifica, puoi fare:
-            # udp_socket.bind(('0.0.0.0', 50000))
             print("Socket UDP inizializzato correttamente.")
         except Exception as e:
             print(f"Errore nell'inizializzazione del socket UDP: {e}")
 
+
 def send_gps_data(gps_data):
-    """Invia i dati GPS al server di destinazione tramite UDP usando il socket globale."""
+    """
+    Invia i dati GPS al server di destinazione tramite UDP usando il socket globale.
+    I pacchetti vengono inviati a DEST_HOST:DEST_PORT e anche a SECOND_DEST_HOST:SECOND_DEST_PORT.
+    """
     global udp_socket
     if udp_socket is None:
         print("Socket UDP non inizializzato!")
@@ -99,36 +118,33 @@ def send_gps_data(gps_data):
     
     try:
         udp_socket.sendto(gps_data.encode(), (DEST_HOST, DEST_PORT))
+        udp_socket.sendto(gps_data.encode(), (SECOND_DEST_HOST, SECOND_DEST_PORT))
     except Exception as e:
         print(f"Errore nell'invio dei dati GPS: {e}")
+
 
 def update_hertz():
     """Calcola e aggiorna la frequenza di aggiornamento dei dati GPS in Hz"""
     global current_hertz
-    
     while True:
         time.sleep(1)  # Aggiorna la frequenza ogni secondo
-        
         with hertz_lock:
             now = time.time()
             # Rimuovi i timestamp più vecchi di 1 secondo
             while gps_update_times and now - gps_update_times[0] > 1.0:
                 gps_update_times.popleft()
-            
             # Il numero di aggiornamenti nell'ultimo secondo è la frequenza in Hz
-            # Dividi per 3 come richiesto
+            # Dividiamo per 3 come richiesto
             current_hertz = len(gps_update_times) / 3
-            
             print(f"Frequenza attuale: {current_hertz} Hz")
+
 
 def connect_to_gps():
     """Connessione al ricevitore GPS e lettura dei dati NMEA"""
     global gps_position
-    
     try:
         with serial.Serial(GPS_PORT, GPS_BAUDRATE, timeout=1) as ser:
             print(f"Connessione al GPS sulla porta {GPS_PORT}...")
-            
             while True:
                 try:
                     line = ser.readline().decode('ascii', errors='replace').strip()
@@ -138,12 +154,16 @@ def connect_to_gps():
                         with hertz_lock:
                             gps_update_times.append(time.time())
                         
-                        # Invia tutti i dati NMEA al server tramite UDP
+                        # Invia tutti i dati NMEA ai server UDP
                         send_gps_data(line)
+
+                        # Salva la riga nel buffer (per scrittura su file in background)
+                        with messages_lock:
+                            messages_buffer.append(f"[GPS] {line}")
                         
+                        # Parsing NMEA
                         try:
                             msg = pynmea2.parse(line)
-                            
                             if isinstance(msg, pynmea2.GGA):
                                 with gps_lock:
                                     gps_position = {
@@ -155,26 +175,26 @@ def connect_to_gps():
                                         'hdop': msg.horizontal_dil,
                                         'time': msg.timestamp,
                                         'raw': line,
-                                        'hertz': current_hertz  # Aggiungi la frequenza attuale
+                                        'hertz': current_hertz
                                     }
                                 
-                                # Invia correzioni RTCM ogni secondo
+                                # Invia correzioni RTCM ogni secondo al ricevitore GPS
                                 current_time = time.time()
                                 with rtcm_lock:
                                     global last_rtcm_time
                                     if rtcm_data and (current_time - last_rtcm_time) >= RTCM_MIN_INTERVAL:
                                         ser.write(rtcm_data)
                                         last_rtcm_time = current_time
-                                
+
                         except pynmea2.ParseError:
                             pass
-                
+
                 except Exception as e:
                     print(f"Errore nella lettura GPS: {e}")
                     time.sleep(1)
-    
     except Exception as e:
         print(f"Errore nella connessione GPS: {e}")
+
 
 def parse_arguments():
     """Funzione per gestire i parametri da linea di comando"""
@@ -191,6 +211,36 @@ def parse_arguments():
     
     return parser.parse_args()
 
+
+def save_data_loop():
+    """
+    Thread dedicato al salvataggio dei dati raccolti.
+    Ogni 15 secondi salva i messaggi accumulati in un file
+    con nome dataodierna_oraattuale (inclusi i secondi).
+    """
+    while True:
+        time.sleep(SAVE_INTERVAL)
+        
+        # Copia i messaggi e svuota il buffer
+        with messages_lock:
+            if not messages_buffer:
+                continue
+            data_to_save = messages_buffer[:]
+            messages_buffer.clear()
+        
+        # Crea il nome del file in base a data e ora
+        filename = datetime.now().strftime('%Y%m%d_%H%M%S') + ".log"
+        
+        # Scrive i messaggi su file (append)
+        try:
+            with open(filename, 'a') as f:
+                for msg in data_to_save:
+                    f.write(msg + "\n")
+            print(f"Salvati {len(data_to_save)} messaggi su {filename}")
+        except Exception as e:
+            print(f"Errore nella scrittura su file {filename}: {e}")
+
+
 def main():
     # Parsing dei parametri da linea di comando
     args = parse_arguments()
@@ -202,7 +252,7 @@ def main():
     DEST_PORT = args.dest_port
     
     print(f"Utilizzando porta GPS: {GPS_PORT}")
-    print(f"Inviando dati a: {DEST_HOST}:{DEST_PORT}")
+    print(f"Inviando dati a: {DEST_HOST}:{DEST_PORT} e a {SECOND_DEST_HOST}:{SECOND_DEST_PORT}")
     
     # Inizializza il socket UDP una sola volta
     init_udp_socket()
@@ -211,14 +261,17 @@ def main():
     ntrip_thread = threading.Thread(target=connect_to_ntrip)
     gps_thread = threading.Thread(target=connect_to_gps)
     hertz_thread = threading.Thread(target=update_hertz)
+    save_thread = threading.Thread(target=save_data_loop)
     
     ntrip_thread.daemon = True
     gps_thread.daemon = True
     hertz_thread.daemon = True
+    save_thread.daemon = True
     
     ntrip_thread.start()
     gps_thread.start()
     hertz_thread.start()
+    save_thread.start()
     
     print("Sistema GPS-RTK avviato. Premi Ctrl+C per terminare.")
     
@@ -232,6 +285,7 @@ def main():
                           f"Qualità: {gps_position['quality']}, Hz: {current_hertz}")
     except KeyboardInterrupt:
         print("\nProgramma terminato dall'utente")
+
 
 if __name__ == "__main__":
     main()
