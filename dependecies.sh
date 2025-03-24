@@ -20,6 +20,10 @@ pip3 install smbus --break-system-packages
 pip3 install sounddevice --break-system-packages
 pip3 install filterpy --break-system-packages
 
+sudo pip3 install mpu6050-raspberrypi --break-system-packages
+sudo pip3 install pyserial --break-system-packages
+sudo pip3 install pynmea2 --break-system-packages
+
 # Installa tmux per eventuali sessioni persistenti
 echo "Installing tmux..."
 sudo apt install -y tmux
@@ -65,7 +69,6 @@ fi
 # Avvio servizio per acquisizione accellerometri e giroscopi
 echo "Setting up accgir service..."
 sudo timedatectl set-timezone Europe/Rome
-sudo pip3 install mpu6050-raspberrypi --break-system-packages
 sudo mkdir logAccGir
 sudo cp accgir.service /etc/systemd/system/accgir.service
 sudo systemctl daemon-reload
