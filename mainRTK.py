@@ -8,6 +8,7 @@ import argparse
 from datetime import datetime
 import pynmea2
 from collections import deque
+import os
 
 # Parametri di connessione al caster NTRIP
 NTRIP_HOST = '213.209.192.165'
@@ -27,6 +28,11 @@ DEST_PORT = 3131
 # Secondo endpoint UDP a cui inviare i pacchetti
 SECOND_DEST_HOST = '213.209.192.165'
 SECOND_DEST_PORT = 5003
+
+LOG_PATH = "/home/pi/ippodromoScripts/logRTK"
+# Assicurati che il percorso esista, altrimenti crealo
+if not os.path.exists(LOG_PATH):
+    os.makedirs(LOG_PATH)
 
 # Variabili globali
 rtcm_data = b''
@@ -212,11 +218,20 @@ def parse_arguments():
     return parser.parse_args()
 
 
+import os  # Aggiungi questo import se non è già presente
+
+# Definisci il percorso di salvataggio dei log
+LOG_PATH = "/home/pi/ippodromoScripts/logRTK"
+
+# Assicurati che il percorso esista, altrimenti crealo
+if not os.path.exists(LOG_PATH):
+    os.makedirs(LOG_PATH)
+
 def save_data_loop():
     """
     Thread dedicato al salvataggio dei dati raccolti.
     Ogni 15 secondi salva i messaggi accumulati in un file
-    con nome dataodierna_oraattuale (inclusi i secondi).
+    nel percorso LOG_PATH, con nome dataodierna_oraattuale.log.
     """
     while True:
         time.sleep(SAVE_INTERVAL)
@@ -228,18 +243,18 @@ def save_data_loop():
             data_to_save = messages_buffer[:]
             messages_buffer.clear()
         
-        # Crea il nome del file in base a data e ora
+        # Crea il nome del file in base a data e ora e costruisci il path completo
         filename = datetime.now().strftime('%Y%m%d_%H%M%S') + ".log"
+        filepath = os.path.join(LOG_PATH, filename)
         
         # Scrive i messaggi su file (append)
         try:
-            with open(filename, 'a') as f:
+            with open(filepath, 'a') as f:
                 for msg in data_to_save:
                     f.write(msg + "\n")
-            print(f"Salvati {len(data_to_save)} messaggi su {filename}")
+            print(f"Salvati {len(data_to_save)} messaggi su {filepath}")
         except Exception as e:
-            print(f"Errore nella scrittura su file {filename}: {e}")
-
+            print(f"Errore nella scrittura su file {filepath}: {e}")
 
 def main():
     # Parsing dei parametri da linea di comando
