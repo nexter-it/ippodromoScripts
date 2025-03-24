@@ -68,6 +68,22 @@ fi
 
 # Avvio servizio per acquisizione accellerometri e giroscopi
 echo "Setting up accgir service..."
+CONFIG_FILE="/boot/firmware/config.txt"
+
+# Aggiunge la riga per abilitare I2C se non già presente
+if ! grep -q "^dtparam=i2c_arm=on" "$CONFIG_FILE"; then
+  echo "Abilitazione I2C in $CONFIG_FILE"
+  echo "dtparam=i2c_arm=on" | sudo tee -a "$CONFIG_FILE"
+else
+  echo "I2C è già abilitato in $CONFIG_FILE"
+fi
+
+# Carica il modulo i2c-dev se non è già caricato
+if ! lsmod | grep -q "^i2c_dev"; then
+  echo "Caricamento del modulo i2c-dev..."
+  sudo modprobe i2c-dev
+fi
+
 sudo timedatectl set-timezone Europe/Rome
 sudo mkdir logAccGir
 sudo cp accgir.service /etc/systemd/system/accgir.service
