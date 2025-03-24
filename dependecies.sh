@@ -74,6 +74,7 @@ sudo cp accgir.service /etc/systemd/system/accgir.service
 sudo systemctl daemon-reload
 sudo systemctl enable accgir.service
 sudo systemctl start accgir.service
+sudo systemctl status accgir.service
 
 echo "All dependencies and services have been set up successfully!"
 echo "Rebooting in 10 seconds..."
