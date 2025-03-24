@@ -244,7 +244,7 @@ def save_data_loop():
             messages_buffer.clear()
         
         # Crea il nome del file in base a data e ora e costruisci il path completo
-        filename = datetime.now().strftime('%Y%m%d_%H%M%S') + ".log"
+        filename = datetime.now().strftime('%Y%m%d_%H') + ".log"
         filepath = os.path.join(LOG_PATH, filename)
         
         # Scrive i messaggi su file (append)
