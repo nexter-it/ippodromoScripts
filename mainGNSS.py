@@ -7,8 +7,12 @@ import json
 import psutil
 from filterpy.kalman import KalmanFilter
 import numpy as np
+import os
+from datetime import datetime
 
-KALMAN_FLAG = false
+# Flag per l'utilizzo del filtro Kalman
+KALMAN_FLAG = False
+
 # Indirizzo IP e porta del server a cui inviare i dati
 #HOST, PORT = '95.230.211.208', 4141
 HOST, PORT = '95.230.211.208', 4141
@@ -45,44 +49,50 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 last_time = time.time()
 interval_sum = 0
 position_count = 0
-initial_measurements = 5  # Number of initial measurements to average for dt
+initial_measurements = 5  # Numero di misurazioni iniziali per calcolare dt
 
 # --- Kalman Filter Setup ---
-dt = 0.04  # Initial guess, will be updated
-kf = KalmanFilter(dim_x=4, dim_z=2)  # State is 4D (x, y, vx, vy), Measurement is 2D (x, y)
+dt = 0.04  # Stima iniziale, verrà aggiornata
+kf = KalmanFilter(dim_x=4, dim_z=2)  # Stato 4D (x, y, vx, vy), Misura 2D (x, y)
 
-# State Transition Matrix (Process Model - Constant Velocity)
+# Matrice di transizione dello stato (modello a velocità costante)
 kf.F = np.array([[1, 0, dt, 0],
                  [0, 1, 0, dt],
                  [0, 0, 1, 0],
                  [0, 0, 0, 1]])
 
-# Measurement Function (Measurement Model - Position Measurement)
+# Funzione di misura (misurazione della posizione)
 kf.H = np.array([[1, 0, 0, 0],
                  [0, 1, 0, 0]])
 
-# Process Noise Covariance Matrix (Q) - Tune these values
-kf.Q = np.eye(4) * 0.1  # Example: small process noise
+# Matrice di covarianza del rumore di processo (Q) - da regolare
+kf.Q = np.eye(4) * 0.1  # Esempio: rumore di processo ridotto
 
-# Measurement Noise Covariance Matrix (R) - Tune based on GPS accuracy (hAcc)
-kf.R = np.eye(2) * 1.0  # Example: Measurement noise with std dev of 1 meter
+# Matrice di covarianza del rumore di misura (R) - da regolare in base all'accuratezza del GPS (hAcc)
+kf.R = np.eye(2) * 1.0  # Esempio: rumore di misura con deviazione standard di 1 metro
 
-# Initial State Estimate (x) - Initial position and velocity (can be zero or initial GPS reading)
-kf.x = np.array([0., 0., 0., 0.])  # Initial state: [x, y, vx, vy] = [0, 0, 0, 0]
+# Stato iniziale (x) - posizione e velocità iniziali (0 o lettura GPS iniziale)
+kf.x = np.array([0., 0., 0., 0.])
 
-# Initial State Covariance Matrix (P) - Initial uncertainty in state (start with high uncertainty)
-kf.P *= 1000.  # Large initial covariance
-# --- End Kalman Filter Setup ---
+# Matrice di covarianza iniziale (P) - incertezza elevata all'inizio
+kf.P *= 1000.
+# --- Fine Setup Kalman Filter ---
 
 # Connessione al demone gpsd
 gpsd.connect()
 
-# Avvia il collegamento
+# Creazione del socket UDP
 sock = create_socket()
 
 last_positions = []
 packet_count = 0
 last_time = time.time()
+
+# --- Setup Logging ---
+log_dir = "/home/pi/ippodromoScripts/logGNSS"
+os.makedirs(log_dir, exist_ok=True)
+log_buffer = []  # Buffer per accumulare le righe da salvare
+last_log_time = time.time()  # Tempo dell'ultimo salvataggio
 
 try:
     while True:
@@ -91,7 +101,6 @@ try:
             packet_count = 0
             last_time = current_time
 
-                
         try:
             packet = gpsd.get_current()
             if packet.mode >= 2:
@@ -104,79 +113,93 @@ try:
                     if position_count == initial_measurements:
                         dt = average_interval
                         kf.F = np.array([[1, 0, dt, 0],
-                                                 [0, 1, 0, dt],
-                                                 [0, 0, 1, 0],
-                                                 [0, 0, 0, 1]])
+                                         [0, 1, 0, dt],
+                                         [0, 0, 1, 0],
+                                         [0, 0, 0, 1]])
                         print(f"Kalman dt updated to: {dt:.4f}s")
                 kf.predict()
              
-                z = np.array([packet.lon, packet.lat])  # Measurement vector (lon, lat)
+                z = np.array([packet.lon, packet.lat])  # Vettore di misura (lon, lat)
                 kf.update(z)
 
-                # --- Get Filtered State ---
+                # --- Stato filtrato ---
                 filtered_state = kf.x
                 filtered_lon = filtered_state[0] if KALMAN_FLAG else packet.lon
                 filtered_lat = filtered_state[1] if KALMAN_FLAG else packet.lat
 
-             
-                # Aggiungi la posizione attuale alla lista delle ultime posizioni
+                # Aggiorna la lista delle ultime posizioni
                 last_positions.append((filtered_lat, filtered_lon))
-                # Mantieni solo le ultime 3 posizioni
                 if len(last_positions) > 6:
                     last_positions.pop(0)
 
-                # Calcola la direzione solo tra la prima e l'ultima posizione
+                # Calcola la direzione tra la prima e l'ultima posizione
                 if len(last_positions) > 1:
-                    lat1, lon1 = last_positions[0]  # Prima posizione
-                    lat2, lon2 = last_positions[-1] # Ultima posizione
+                    lat1, lon1 = last_positions[0]
+                    lat2, lon2 = last_positions[-1]
                     average_bearing = calculate_bearing(lat1, lon1, lat2, lon2)
                 else:
                     average_bearing = "N/A"
-
                     
                 packet_count += 1
-                # Legge il consumo di CPU e di RAM
+
+                # Legge il consumo di CPU e RAM
                 cpu_usage = psutil.cpu_percent()
                 ram_usage = psutil.virtual_memory().percent
                 
                 data = [
                     "GPS",
                     str(HEAD_ID),
-                    str(filtered_lat),  # Latitudine
-                    str(filtered_lon),  # Longitudine
-                    str(packet.get_time()),  # Orario
+                    str(filtered_lat),      # Latitudine
+                    str(filtered_lon),      # Longitudine
+                    str(packet.get_time()), # Orario
                     str(packet.alt) if packet.alt is not None else 'N/A',  # Altitudine
-                    str(packet.hspeed),  # Velocità orizzontale
+                    str(packet.hspeed),     # Velocità orizzontale
                     str(int(average_bearing)),
-                    str(cpu_usage),  # Uso della CPU in percentuale
-                    str(ram_usage)   # Uso della RAM in percentuale
+                    str(cpu_usage),         # Uso della CPU (%)
+                    str(ram_usage)          # Uso della RAM (%)
                 ]
                 
-                # Unisce gli elementi dell'array in una stringa separata da virgole
+                # Unisce gli elementi in una stringa separata da virgole
                 data_str = ','.join(data)
+                
                 try:
-                    # Invia i dati come stringa al server attraverso il socket UDP
+                    # Invio dei dati via socket UDP
                     sock.sendto(data_str.encode('utf-8'), (HOST, PORT))
                     print("[ " + str(packet_count) + " ]" + " + " + data_str)
                 except socket.error:
                     print("[ " + str(packet_count) + " ]" + " - " + data_str)
                     print("Errore di invio dati.")
+                
+                # Aggiunge la riga al buffer di log
+                log_buffer.append(data_str)
+                
+                # Controlla se sono passati 15 secondi per salvare il log
+                if current_time - last_log_time >= 15:
+                    filename = datetime.now().strftime("%Y%m%d_%H.log")
+                    file_path = os.path.join(log_dir, filename)
+                    with open(file_path, 'a') as f:
+                        for line in log_buffer:
+                            f.write(line + "\n")
+                    log_buffer = []  # Svuota il buffer
+                    last_log_time = current_time
+
                 last_time = current_time
             try:
                 speed = float(packet.hspeed)
             except (TypeError, ValueError):
                 speed = 0
             
-            speed = speed * 3.6
+            speed = speed * 3.6  # Conversione da m/s a km/h
 
-            #if speed <= 2:
+            # Se la velocità è bassa, si potrebbe rallentare il ciclo (qui commentato)
+            # if speed <= 2:
             #    time.sleep(1)      # 1 pacchetto al secondo
-            #else:
+            # else:
             time.sleep(0.04)   # 25 pacchetti al secondo
         except Exception as e:
             if "GPS not active" in str(e):
                 print("Errore GPS: GPS non attivo, attesa di 10 secondi.")
-                time.sleep(10)  # Attende 10 secondi prima di riprovare
+                time.sleep(10)  # Attesa di 10 secondi prima del prossimo tentativo
             else:
                 print(f"Errore non gestito: {e}")
 
@@ -185,5 +208,5 @@ except KeyboardInterrupt:
 except Exception as e:
     print(f"Errore: {e}")
 finally:
-    # Chiudi il socket al termine dell'invio
+    # Chiusura del socket UDP
     sock.close()
