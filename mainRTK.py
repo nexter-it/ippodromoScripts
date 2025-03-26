@@ -297,7 +297,7 @@ def main():
             with gps_lock:
                 if gps_position:
                     print(f"Posizione: Lat: {gps_position['lat']}, Lon: {gps_position['lon']}, "
-                          f"Qualità: {gps_position['quality']}, Hz: {current_hertz}")
+      f"Qualità: {gps_position['quality']}, Satelliti: {gps_position['satellites']}, Hz: {current_hertz}")
     except KeyboardInterrupt:
         print("\nProgramma terminato dall'utente")
 
