@@ -23,7 +23,7 @@ GPS_BAUDRATE = 115200
 # Destinazioni UDP
 DESTINATIONS = [
     ('10.0.0.3', 3131),
-    ('213.209.192.165', 5001)
+    ('213.209.192.165', 5010)
 ]
 
 # Variabili globali
