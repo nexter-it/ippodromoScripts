@@ -21,7 +21,7 @@ GPS_PORT = '/dev/ttyACM0'
 GPS_BAUDRATE = 115200
 
 # Parametri di connessione al server di destinazione (UDP)
-DEST_HOST = '10.0.0.3'
+DEST_HOST = '10.0.0.1'
 DEST_PORT = 3131
 
 # Nuovo server di destinazione aggiuntivo
