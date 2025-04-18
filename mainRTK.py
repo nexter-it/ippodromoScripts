@@ -34,7 +34,7 @@ config = {
     
     # Destinazioni (lista di tuple (host, porta))
     "destinations": [
-        ("10.0.0.3", 3131),
+        ("10.0.0.1", 3131),
         ("213.209.192.165", 5001)
     ]
 }
