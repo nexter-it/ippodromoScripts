@@ -121,29 +121,31 @@ def send_udp(msg: str):
 def update_timestamp_from_msg(msg):
     """Aggiorna il timestamp dai dati del messaggio NMEA."""
     current_time = None
-    
-    # Prima prova con datestamp + datetime (RMC)
-    if hasattr(msg, 'datestamp') and hasattr(msg, 'datetime') and msg.datestamp and msg.datetime:
-        try:
-            current_time = datetime.datetime.combine(msg.datestamp, msg.datetime.time())
-        except (AttributeError, ValueError):
-            pass
-    
-    # Poi prova con datestamp + timestamp (RMC alternativo)
-    if not current_time and hasattr(msg, 'datestamp') and hasattr(msg, 'timestamp') and msg.datestamp and msg.timestamp:
+
+    # Prova con datestamp + timestamp (RMC)
+    if hasattr(msg, 'datestamp') and hasattr(msg, 'timestamp') and msg.datestamp and msg.timestamp:
         try:
             current_time = datetime.datetime.combine(msg.datestamp, msg.timestamp)
-        except (AttributeError, ValueError):
+        except (AttributeError, ValueError, TypeError):
             pass
-    
+
     # Infine prova solo con timestamp (GGA)
     if not current_time and hasattr(msg, 'timestamp') and msg.timestamp:
         try:
-            # Per GGA, usa la data corrente con l'ora dal GPS
             today = datetime.date.today()
             current_time = datetime.datetime.combine(today, msg.timestamp)
-        except (AttributeError, ValueError):
+        except (AttributeError, ValueError, TypeError):
             pass
+
+    # Se abbiamo un tempo valido, aggiorna
+    if current_time:
+        with gps_lock:
+            gps_data['timestamp'] = current_time.strftime("%y%m%d%H%M%S")
+            gps_data['last_valid_time'] = current_time
+        return True
+
+    return False
+
     
     # Se abbiamo un tempo valido, aggiornalo
     if current_time:
